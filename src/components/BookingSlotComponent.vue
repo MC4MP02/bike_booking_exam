@@ -47,8 +47,6 @@ export default {
 <template>
     <span @click="toggleBikeBooked" :style="`background-color: ${bikeBooked}`">Bike: {{ bikeId }} Slot: {{ slotId
         }}</span>
-    <!-- {{ modelValue }}
-    {{ color }} -->
 </template>
 
 <style></style>
