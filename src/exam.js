@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
+import { finished } from 'stream';
 
 const app = express();
 const port = 3001;
@@ -12,24 +13,12 @@ const bookBikeModule = function () {
   let buildTimeOut = (bikeId) => {
     return {
       state: 0,
-      finished: 0,
       startTimeOut: function () {
         this.state = 1
-        setInterval(() => {
-          this.finished = 1
-          if (bikesTimeouts[bikeId - 1].finished == 1) {
-            let numProms = 0;
-            let promIndex = 0;
-            promises[bikeId - 1].forEach((prom, ind) => {
-              if (prom != null) {
-                numProms++;
-                promIndex = ind;
-              }
-            })
-            if (numProms == 1) {
-              resolveFunctions[bikeId - 1][promIndex]('booked')
-            }
-          }
+        setTimeout(() => {
+          lastPromiseResolve[bikeId-1]('booked')
+          lastPromiseReject[bikeId-1] = null
+          lastPromiseResolve[bikeId - 1] = null
         }, 5000)
       }
     }
@@ -37,79 +26,51 @@ const bookBikeModule = function () {
 
   let bikesTimeouts = [buildTimeOut(1), buildTimeOut(2), buildTimeOut(3), buildTimeOut(4), buildTimeOut(5)]
 
-  let promises = Array(5).fill().map(() => Array(5).fill(null));
-  let rejectFunctions = Array(5).fill().map(() => Array(5).fill(null));
-  let resolveFunctions = Array(5).fill().map(() => Array(5).fill(null));
+  let lastPromiseReject = [null, null, null, null, null]
+  let lastPromiseResolve = [null, null, null, null, null]
 
-  let bookBike = (bikeId, slotId) => {
-    promises[bikeId - 1][slotId - 1] = new Promise((resolve, reject) => {
-      rejectFunctions[bikeId - 1][slotId - 1] = reject;
-      resolveFunctions[bikeId - 1][slotId - 1] = resolve;
+  let _bookBike = (bikeId, slotId) => {
+    return new Promise((resolve, reject) => {
 
-      if (bikesTimeouts[bikeId - 1].state == 0 && bikeId != slotId) {
-        if (bikesTimeouts[bikeId - 1].finished == 1) {
-          resolve('booked')
-        } else {
-          bikesTimeouts[bikeId - 1].startTimeOut()
-        }
+      if(bikesTimeouts[bikeId -1].state == 0) {
+        bikesTimeouts[bikeId-1].startTimeOut()
+        lastPromiseReject[bikeId - 1] = reject
+        lastPromiseResolve[bikeId - 1] = resolve
       } else {
-        promises[bikeId - 1].forEach((prom, ind) => {
-          console.log(prom, ind, slotId - 1);
-          if (prom != null && ind != slotId - 1) {
-            if (rejectFunctions[bikeId - 1][ind]) {
-              rejectFunctions[bikeId - 1][ind]('rejected');
-            }
-          }
-        })
-        reject('rejected')
+        lastPromiseReject[bikeId - 1]('rejected')
+        lastPromiseReject[bikeId - 1] = reject
+        lastPromiseResolve[bikeId - 1] = resolve
       }
     })
   }
 
   return {
-    bookBike: bookBike,
-    promises: promises,
-    rejectFunctions: rejectFunctions,
-    resolveFunctions: resolveFunctions,
-    bikesTimeouts: bikesTimeouts
+    bookBike: _bookBike,
   }
 
 }()
 
 app.get('/book', function (req, res) {
-  let bikeId = req.query.bikeId
-  let slotId = req.query.slotId
-  console.log(`bikeId: ${bikeId}, slotId: ${slotId}`);
+  //if(typeof bookBikeModule != 'undefined') {
 
-  bookBikeModule.bookBike(bikeId, slotId)
-  //console.log(bookBikeModule.promises);
-  console.log(bookBikeModule.promises[bikeId - 1]);
-  console.log(bookBikeModule.rejectFunctions);
-
-
-  bookBikeModule.promises[bikeId - 1][slotId - 1]
-    .then((value) => {
-      res.write(value)
-      res.end()
-    })
-    .catch((err) => {
-      res.write(err)
-      res.end()
-    })
-
-
-  //res.write('booked');
-  //res.write('rejected');
-  //hint: promise.then((value)=>{}).catch((err)=>{}).finally(()=>res.end())
-
+  bookBikeModule.bookBike(req.query.bikeId, req.query.slotId)
+  .then(response => {
+    res.write(response);
+    res.end();
+  }).catch(error => {
+    res.write(error)
+    res.end()
+  })
 
   /*
-  // hardcoded response for when bookBike function is not implemented
-  const randomBoolean = Math.random() < 0.5;
-  setTimeout(()=>{
-    res.write(randomBoolean ? 'booked' : 'rejected');
-    res.end();
-  }, 1000)*/
+    // hardcoded response for when bookBike function is not implemented
+    const randomBoolean = Math.random() < 0.5;
+    setTimeout(()=>{
+      res.write(randomBoolean ? 'booked' : 'rejected');
+      res.end();
+    }, 1000)
+  }*/
+
 
 });
 
