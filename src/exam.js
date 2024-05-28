@@ -1,7 +1,6 @@
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
-import { finished } from 'stream';
 
 const app = express();
 const port = 3001;
@@ -56,11 +55,10 @@ app.get('/book', function (req, res) {
   bookBikeModule.bookBike(req.query.bikeId, req.query.slotId)
   .then(response => {
     res.write(response);
-    res.end();
   }).catch(error => {
     res.write(error)
-    res.end()
   })
+  .finally(() => res.end())
 
   /*
     // hardcoded response for when bookBike function is not implemented
