@@ -15,9 +15,8 @@ const bookBikeModule = function () {
       startTimeOut: function () {
         this.state = 1
         setTimeout(() => {
-          lastPromiseResolve[bikeId-1]('booked')
-          lastPromiseReject[bikeId-1] = null
-          lastPromiseResolve[bikeId - 1] = null
+          this.state = 0
+          bikePromises[bikeId - 1].resolveF('booked')
         }, 5000)
       }
     }
@@ -25,21 +24,17 @@ const bookBikeModule = function () {
 
   let bikesTimeouts = [buildTimeOut(1), buildTimeOut(2), buildTimeOut(3), buildTimeOut(4), buildTimeOut(5)]
 
-  let lastPromiseReject = [null, null, null, null, null]
-  let lastPromiseResolve = [null, null, null, null, null]
+  const bikePromises =  []
 
-  let _bookBike = (bikeId, slotId) => {
+  const _bookBike = (bikeId, slotId) => {
     return new Promise((resolve, reject) => {
-
-      if(bikesTimeouts[bikeId -1].state == 0) {
-        bikesTimeouts[bikeId-1].startTimeOut()
-        lastPromiseReject[bikeId - 1] = reject
-        lastPromiseResolve[bikeId - 1] = resolve
+      const index = bikeId - 1
+      if(bikesTimeouts[index].state == 0) {
+        bikesTimeouts[index].startTimeOut()
       } else {
-        lastPromiseReject[bikeId - 1]('rejected')
-        lastPromiseReject[bikeId - 1] = reject
-        lastPromiseResolve[bikeId - 1] = resolve
+        bikePromises[index].rejectF('rejected')
       }
+      bikePromises[index] = {rejectF: reject, resolveF: resolve}
     })
   }
 
